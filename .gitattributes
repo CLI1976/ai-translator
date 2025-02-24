@@ -1,0 +1,3 @@
+# 標示為 AutoHotkey v2
+*.ahk linguist-language=AutoHotkey
+*.ahk -text
