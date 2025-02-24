@@ -57,7 +57,7 @@ Version=
 
 1. 運行 `ai-translator.ahk`
 2. 選取要翻譯的文字
-3. 按下 CapsLock 鍵
+3. 按下 CapsLock+a 鍵
 4. 在彈出的選單中選擇所需的翻譯模式
 5. 等待翻譯完成
 
