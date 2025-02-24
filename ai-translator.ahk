@@ -1,5 +1,7 @@
 #Requires AutoHotkey v2.0
 #SingleInstance Force
+CoordMode("Mouse", "Screen")  ; 設置滑鼠為螢幕坐標模式
+CoordMode("Menu", "Screen")   ; 設置選單為螢幕坐標模式
 
 ; 全局變數
 global CurrentProvider := "Akash"  ; 預設使用 Akash
@@ -132,7 +134,7 @@ translateMenu.Add("修正英文文法與錯字", CorrectEnglish)
 
 ; ========== 快捷鍵設定 ==========
 ; 使用 CapsLock 鍵顯示翻譯模式選單（替代原來的 F1）
-CapsLock::ShowTranslateMenu()
+CapsLock & a::ShowTranslateMenu()
 ; 添加 Shift+CapsLock 組合鍵來切換 CapsLock 狀態
 +CapsLock::SetCapsLockState(!GetKeyState("CapsLock", "T"))
 
@@ -561,8 +563,7 @@ ProcessJsonEscapes(text, provider) {
     return processedText
 }
 
-; 根據供應商處理並顯示回應
-ShowResponse(response, provider, title := "") {
+ShowResponse(response, provider, title := "", mouseX := 0, mouseY := 0) {
     ; 獲取當前使用的模型名稱
     model := ReadApiModel(provider)
     
@@ -621,10 +622,18 @@ ShowResponse(response, provider, title := "") {
     ; 添加大小調整事件處理
     responseGui.OnEvent("Size", GuiResize)
     
-    ; 顯示 GUI
-    responseGui.Show("w620 h450")
-}
+    ; 如果沒有提供滑鼠位置，則獲取當前位置
+    if (mouseX = 0 && mouseY = 0) {
+        MouseGetPos(&mouseX, &mouseY)
+    }
+    ; 設定視窗寬高
+    winWidth := 900
+    winHeight := 870
 
+    ; 顯示 GUI，在滑鼠位置
+    responseGui.Show(Format("w{1} h{2} x{3} y{4}", winWidth, winHeight, mouseX, mouseY))
+    ; responseGui.Show("w620 h450 x775 y394")
+}
 ; GUI 大小調整處理函數
 GuiResize(thisGui, MinMax, Width, Height) {
     if MinMax = -1  ; 視窗最小化
