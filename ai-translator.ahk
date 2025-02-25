@@ -131,12 +131,14 @@ translateMenu := Menu()
 translateMenu.Add("翻譯成英文", TranslateToEnglish)
 translateMenu.Add("翻譯成繁體中文", TranslateToChinese)
 translateMenu.Add("修正英文文法與錯字", CorrectEnglish)
+translateMenu.Add("英文拼字檢查", SpellCheckEnglish)  
 
 ; ========== 快捷鍵設定 ==========
 ; 使用 CapsLock 鍵顯示翻譯模式選單（替代原來的 F1）
-CapsLock & a::ShowTranslateMenu()
+; CapsLock & a::ShowTranslateMenu()
+!s::ShowTranslateMenu()  ; alt+s
 ; 添加 Shift+CapsLock 組合鍵來切換 CapsLock 狀態
-+CapsLock::SetCapsLockState(!GetKeyState("CapsLock", "T"))
+; +CapsLock::SetCapsLockState(!GetKeyState("CapsLock", "T"))
 
 ; 顯示翻譯模式選單的函數
 ShowTranslateMenu() {
@@ -172,19 +174,32 @@ ShowTranslateMenu() {
 ; ========== 翻譯功能 ==========
 ; 翻譯成英文
 TranslateToEnglish(ItemName, ItemPos, Menu) {
-    Translate("en", "請將以下文字翻譯成自然流暢的英文。翻譯時應保持原文的意思，但不需要逐字翻譯，確保翻譯後的內容符合英文語言習慣。")
+    Translate("en", "是一位專業的醫療翻譯員，請將接下來的文本翻譯成正式的繁體中文。請確保用詞精確，適合用於醫療報告或相關文檔。")
 }
+; 請將以下文字翻譯成自然流暢的英文。翻譯時應保持原文的意思，但不需要逐字翻譯，確保翻譯後的內容符合英文語言習慣
+; 是一位專業的醫療翻譯員，請將接下來的文本翻譯成正式的繁體中文。請確保用詞精確，適合用於醫療報告或相關文檔。
 
 ; 翻譯成繁體中文
 TranslateToChinese(ItemName, ItemPos, Menu) {
-    Translate("zh-tw", "請將以下文字翻譯成正式的繁體中文。翻譯時應保持原文的意思，但不需要逐字翻譯，確保翻譯後的內容符合繁體中文語言習慣。")
+    Translate("zh-tw", "你是一位專業的醫療翻譯員，請將接下來的文本翻譯成正式的繁體中文。請確保用詞精確，適合用於醫療報告或相關文檔。")
 }
+; 請將以下文字翻譯成正式的繁體中文。翻譯時應保持原文的意思，但不需要逐字翻譯，確保翻譯後的內容符合繁體中文語言習慣。
+; 你是一位專業的醫療翻譯員，請將接下來的文本翻譯成正式的繁體中文。請確保用詞精確，適合用於醫療報告或相關文檔。
 
 ; 修正英文文法與錯字
 CorrectEnglish(ItemName, ItemPos, Menu) {
     ; 使用更簡單的提示詞，避免特殊字符問題
-    Translate("correct", "請修正以下英文文字的文法和拼寫錯誤。修正後，請列出所有錯誤及修正理由。")
+    Translate("correct", "是一位專業的英文語言校對員，請檢查我接下來提供的英文句子，並修改文法或拼字錯誤。輸出修改後的句子，並簡單標註修改的地方。")
 }
+; 請修正以下英文文字的文法和拼寫錯誤。修正後，請列出所有錯誤及修正理由。
+; 你是一位專業的英文語言校對員，請檢查我接下來提供的英文句子，並修改文法或拼字錯誤。輸出修改後的句子，並簡單標註修改的地方。
+
+; 英文拼字檢查
+SpellCheckEnglish(ItemName, ItemPos, Menu) {
+    Translate("spell-check", "請檢查以下英文單字或片語的拼字。如果拼字正確，只需顯示「拼字正確」和對應的繁體中文翻譯。如果拼字錯誤，請列出可能正確的英文拼法和對應的繁體中文翻譯。不要列出假設性的錯誤情況。")
+}
+; 檢查以下英文字的拼字是否正確，顯示繁體中文翻譯，若是拼字錯誤，列出幾個可能正確的英文字。
+; 請檢查以下英文單字或片語的拼字。如果拼字正確，只需顯示「拼字正確」和對應的繁體中文翻譯。如果拼字錯誤，請列出可能正確的英文拼法和對應的繁體中文翻譯。不要列出假設性的錯誤情況。
 
 ; 修改翻譯功能來處理剪貼簿還原
 Translate(targetLanguage, prompt) {
@@ -242,6 +257,8 @@ Translate(targetLanguage, prompt) {
             title := "翻譯成繁體中文"
         } else if (targetLanguage = "correct") {
             title := "英文文法修正"
+        } else if (targetLanguage = "spell-check") {
+            title := "英文拼字檢查"
         }
         
         ShowResponse(response, provider, title)
@@ -254,14 +271,35 @@ CreateTranslationJson(provider, model, textToTranslate, prompt) {
     
     ; 先寫出基礎 JSON 模板
     if (provider = "Claude") {
-        jsonTemplate := '{"model":"MODEL_PLACEHOLDER","messages":[{"role":"user","content":"PROMPT_PLACEHOLDER\n\nTEXT_PLACEHOLDER"}],"max_tokens":2000}'
+        ; jsonTemplate := '{"model":"MODEL_PLACEHOLDER","messages":[{"role":"user","content":"PROMPT_PLACEHOLDER\n\nTEXT_PLACEHOLDER"}],"max_tokens":2000}'
+        jsonTemplate := '{"model":"MODEL_PLACEHOLDER","messages":[{"role":"user","content":"PROMPT_PLACEHOLDER\n\nTEXT_PLACEHOLDER"}],"max_tokens":2000,"temperature":0.3}'
     } else if (provider = "OpenAI" || provider = "Akash") {
         jsonTemplate := '{"model":"MODEL_PLACEHOLDER","messages":[{"role":"system","content":"PROMPT_PLACEHOLDER"},{"role":"user","content":"TEXT_PLACEHOLDER"}],"max_tokens":2000,"temperature":0.3}'
     } else {
         MsgBox("不支援的 API 供應商: " provider)
         return ""
     }
-    
+/*
+temperature 參數控制輸出的隨機性或多樣性:
+
+- 低 temperature (0.0-0.3)：
+  - 輸出更加一致、可預測
+  - 更傾向於選擇最高概率的詞語
+  - 適合需要準確性和可靠性的任務，如翻譯、摘要、事實查詢
+  - 答案更加「安全」和保守
+
+- 中等 temperature (0.4-0.7)：
+  - 平衡創造性和一致性
+  - 有一定的變化但仍保持連貫
+
+- 高 temperature (0.8-1.0+)：
+  - 產生更多樣化和意外的回應
+  - 更適合創意寫作、腦力激盪、聊天機器人等應用
+  - 可能會產生更有趣但不太可靠的內容
+
+對於翻譯工具，0.3 是個很好的預設值，可獲得準確且一致的翻譯。
+*/  
+
     ; 將模板寫入臨時文件
     templateFile := A_Temp "\json_template.json"
     Try FileDelete(templateFile)
