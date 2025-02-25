@@ -83,4 +83,7 @@ Version=
 
 ## 授權協議
 
+If you wish to support me in this and other projects:
+[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/hw98188d)
+
 [MIT License](LICENSE)
