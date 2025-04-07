@@ -1,5 +1,7 @@
 #Requires AutoHotkey v2.0
 #SingleInstance Force
+#Include jsongo.v2.ahk
+
 CoordMode("Mouse", "Screen")  ; 設置滑鼠為螢幕坐標模式
 CoordMode("Menu", "Screen")   ; 設置選單為螢幕坐標模式
 
@@ -116,10 +118,25 @@ SelectAkash(ItemName, ItemPos, Menu) {
     A_TrayMenu.Check("使用 Akash API")
 }
 
+; 創建選單回調函數
+SelectGemini(ItemName, ItemPos, Menu) {
+    global CurrentProvider := "Gemini"
+    
+    ; 先取消所有勾選
+    A_TrayMenu.Uncheck("使用 Claude API")
+    A_TrayMenu.Uncheck("使用 OpenAI API")
+    A_TrayMenu.Uncheck("使用 Akash API")
+    A_TrayMenu.Uncheck("使用 Gemini API")
+    
+    ; 然後勾選當前選項
+    A_TrayMenu.Check("使用 Gemini API")
+}
+
 ; 直接添加到系統托盤選單
 A_TrayMenu.Add("使用 Claude API", SelectClaude)
 A_TrayMenu.Add("使用 OpenAI API", SelectOpenAI)
 A_TrayMenu.Add("使用 Akash API", SelectAkash)
+A_TrayMenu.Add("使用 Gemini API", SelectGemini)
 A_TrayMenu.Add()  ; 分隔線
 
 ; 預設勾選 Akash
@@ -134,11 +151,38 @@ translateMenu.Add("修正英文文法與錯字", CorrectEnglish)
 translateMenu.Add("英文拼字檢查", SpellCheckEnglish)  
 
 ; ========== 快捷鍵設定 ==========
-; 使用 CapsLock 鍵顯示翻譯模式選單（替代原來的 F1）
-; CapsLock & a::ShowTranslateMenu()
-!s::ShowTranslateMenu()  ; alt+s
-; 添加 Shift+CapsLock 組合鍵來切換 CapsLock 狀態
-; +CapsLock::SetCapsLockState(!GetKeyState("CapsLock", "T"))
+; 使用 CapsLock + S
+*CapsLock Up::release_modifiers()
+
+#HotIf GetKeyState('CapsLock', 'P')
+*a::ShowTranslateMenu()
+*s::ShowTranslateMenu()
+*d::LookUp()
+#HotIf
+
+class double_tap_caps {
+    static last := 0
+    static __New() => SetCapsLockState('AlwaysOff')
+
+    static Call() {
+        if (A_TickCount - this.last < 250)
+            this.toggle_caps()
+            ,this.last := 0
+        else this.last := A_TickCount
+        KeyWait('CapsLock')
+    }
+    
+    static toggle_caps() {
+        state := GetKeyState('CapsLock', 'T') ? 'AlwaysOff' : 'AlwaysOn'
+        SetCapsLockState(state)
+    }
+}
+
+release_modifiers() {
+    for key in ['Shift', 'Alt', 'Control', 'LWin', 'RWin']
+        if GetKeyState(key) && !GetKeyState(key, 'P')
+            Send('{' key ' Up}')
+}
 
 ; 顯示翻譯模式選單的函數
 ShowTranslateMenu() {
@@ -174,14 +218,14 @@ ShowTranslateMenu() {
 ; ========== 翻譯功能 ==========
 ; 翻譯成英文
 TranslateToEnglish(ItemName, ItemPos, Menu) {
-    Translate("en", "你是一位專業的翻譯員，請將接下來的中文句子翻譯為日常使用的英文對話，不需要太正式，但要確保表達清楚、自然。")
+    Translate("en", "你是一位專業的翻譯員，請將接下來的中文句子翻譯為日常使用的英文對話，不需要太正式，但要確保表達清楚、自然，僅輸出翻譯結果。")
 }
 ; 請將以下文字翻譯成自然流暢的英文。翻譯時應保持原文的意思，但不需要逐字翻譯，確保翻譯後的內容符合英文語言習慣
 ; 你是一位專業的翻譯員，請將接下來的中文句子翻譯為日常使用的英文對話，不需要太正式，但要確保表達清楚、自然。
 
 ; 翻譯成繁體中文
 TranslateToChinese(ItemName, ItemPos, Menu) {
-    Translate("zh-tw", "你是一位專業的醫療翻譯員，請將接下來的文本翻譯成正式的繁體中文。請確保用詞精確，適合用於醫療報告或相關文檔。")
+    Translate("zh-tw", "請將接下來的文本翻譯成正式的繁體中文。請確保用詞精確，適合用於專業報告或相關文檔，僅輸出翻譯結果。")
 }
 ; 請將以下文字翻譯成正式的繁體中文。翻譯時應保持原文的意思，但不需要逐字翻譯，確保翻譯後的內容符合繁體中文語言習慣。
 ; 你是一位專業的醫療翻譯員，請將接下來的文本翻譯成正式的繁體中文。請確保用詞精確，適合用於醫療報告或相關文檔。
@@ -265,20 +309,6 @@ Translate(targetLanguage, prompt) {
     }
 }
 
-; 創建翻譯請求的 JSON
-CreateTranslationJson(provider, model, textToTranslate, prompt) {
-    ; 將所有內容透過臨時文件處理，避免字串處理問題
-    
-    ; 先寫出基礎 JSON 模板
-    if (provider = "Claude") {
-        ; jsonTemplate := '{"model":"MODEL_PLACEHOLDER","messages":[{"role":"user","content":"PROMPT_PLACEHOLDER\n\nTEXT_PLACEHOLDER"}],"max_tokens":2000}'
-        jsonTemplate := '{"model":"MODEL_PLACEHOLDER","messages":[{"role":"user","content":"PROMPT_PLACEHOLDER\n\nTEXT_PLACEHOLDER"}],"max_tokens":2000,"temperature":0.3}'
-    } else if (provider = "OpenAI" || provider = "Akash") {
-        jsonTemplate := '{"model":"MODEL_PLACEHOLDER","messages":[{"role":"system","content":"PROMPT_PLACEHOLDER"},{"role":"user","content":"TEXT_PLACEHOLDER"}],"max_tokens":2000,"temperature":0.3}'
-    } else {
-        MsgBox("不支援的 API 供應商: " provider)
-        return ""
-    }
 /*
 temperature 參數控制輸出的隨機性或多樣性:
 
@@ -300,58 +330,45 @@ temperature 參數控制輸出的隨機性或多樣性:
 對於翻譯工具，0.3 是個很好的預設值，可獲得準確且一致的翻譯。
 */  
 
-    ; 將模板寫入臨時文件
-    templateFile := A_Temp "\json_template.json"
-    Try FileDelete(templateFile)
-    FileAppend jsonTemplate, templateFile, "UTF-8-RAW"
+; 創建翻譯請求的 JSON
+CreateTranslationJson(provider, model, textToTranslate, prompt) {
+    ; 初始化基本 JSON 結構
+    if (provider = "Claude") {
+        jsonObj := Map(
+            "model", model,
+            "messages", [Map("role", "user", "content", prompt . "`n`n" . textToTranslate)],
+            "max_tokens", 2000,
+            "temperature", 0.3
+        )
+    } else if (provider = "OpenAI" || provider = "Akash") {
+        jsonObj := Map(
+            "model", model,
+            "messages", [
+                Map("role", "system", "content", prompt),
+                Map("role", "user", "content", textToTranslate)
+            ],
+            "max_tokens", 2000,
+            "temperature", 0.3
+        )
+    } else if (provider = "Gemini") {
+        jsonObj := Map(
+            "contents", [
+                Map("role", "user", "parts", [Map("text", prompt . "`n`n" . textToTranslate)])
+            ],
+            "generationConfig", Map(
+                "temperature", 0.3,
+                "maxOutputTokens", 2000,
+                "topP", 0.95,
+                "topK", 40
+            )
+        )
+    } else {
+        MsgBox("不支援的 API 供應商: " provider)
+        return ""
+    }
     
-    ; 讀取模板
-    jsonTemplate := FileRead(templateFile, "UTF-8-RAW")
-    
-    ; 替換佔位符
-    jsonTemplate := StrReplace(jsonTemplate, "MODEL_PLACEHOLDER", model)
-    
-    ; 將提示詞和翻譯文本寫入臨時文件
-    promptFile := A_Temp "\prompt.txt"
-    textFile := A_Temp "\text.txt"
-    
-    Try FileDelete(promptFile)
-    Try FileDelete(textFile)
-    
-    FileAppend prompt, promptFile, "UTF-8-RAW"
-    FileAppend textToTranslate, textFile, "UTF-8-RAW"
-    
-    ; 讀取提示詞和翻譯文本
-    promptContent := FileRead(promptFile, "UTF-8-RAW")
-    textContent := FileRead(textFile, "UTF-8-RAW")
-    
-    ; 將換行符替換為 \n
-    promptContent := StrReplace(promptContent, "`r`n", "\n")
-    promptContent := StrReplace(promptContent, "`n", "\n")
-    promptContent := StrReplace(promptContent, "`r", "\n")
-    
-    textContent := StrReplace(textContent, "`r`n", "\n")
-    textContent := StrReplace(textContent, "`n", "\n")
-    textContent := StrReplace(textContent, "`r", "\n")
-    
-    ; 處理其他需要轉義的字符
-    promptContent := StrReplace(promptContent, "\", "\\")
-    promptContent := StrReplace(promptContent, '"', '\"')
-    
-    textContent := StrReplace(textContent, "\", "\\")
-    textContent := StrReplace(textContent, '"', '\"')
-    
-    ; 替換佔位符
-    jsonTemplate := StrReplace(jsonTemplate, "PROMPT_PLACEHOLDER", promptContent)
-    jsonTemplate := StrReplace(jsonTemplate, "TEXT_PLACEHOLDER", textContent)
-    
-    ; 寫入最終 JSON 文件
-    jsonFile := A_Temp "\final_request.json"
-    Try FileDelete(jsonFile)
-    FileAppend jsonTemplate, jsonFile, "UTF-8-RAW"
-    
-    ; 讀取並返回最終 JSON
-    return FileRead(jsonFile, "UTF-8-RAW")
+    ; 使用 jsongo 轉換為 JSON 字符串
+    return jsongo.Stringify(jsonObj, , "")
 }
 
 ; 發送請求並獲取回應
@@ -361,13 +378,7 @@ SendRequest(provider, endpoint, apiKey, version, jsonContent) {
     Try FileDelete(jsonFile)
     
     ; 寫入 JSON 內容
-    file := FileOpen(jsonFile, "w", "UTF-8-RAW")
-    if !file {
-        MsgBox("無法創建請求文件。")
-        return ""
-    }
-    file.Write(jsonContent)
-    file.Close()
+    FileAppend jsonContent, jsonFile, "UTF-8-RAW"
     
     ; 準備回應文件
     responseFile := A_Temp "\" provider "_response.json"
@@ -386,6 +397,12 @@ SendRequest(provider, endpoint, apiKey, version, jsonContent) {
         curlCmd .= ' -H "Content-Type: application/json"'
             . ' -H "Accept: application/json"'
             . ' -H "Authorization: Bearer ' apiKey '"'
+    } else if (provider = "Gemini") {
+        ; Gemini API 金鑰是直接附加在 URL 上的
+        ; 修改 endpoint 來包含 API 金鑰
+        endpoint := StrReplace(endpoint, "{API_KEY}", apiKey)
+        curlCmd := 'curl -s -X POST "' endpoint '"'
+            . ' -H "Content-Type: application/json"'
     }
     
     ; 添加數據和輸出重定向
@@ -413,192 +430,46 @@ SendRequest(provider, endpoint, apiKey, version, jsonContent) {
 
 ExtractResponseText(response, provider) {
     try {
-        ; 將回應寫入臨時文件，以便更好地處理
-        responseFile := A_Temp "\response_extract.json"
-        Try FileDelete(responseFile)
-        FileAppend response, responseFile, "UTF-8"
-        response := FileRead(responseFile, "UTF-8")
+        ; 使用 jsongo 解析 JSON 回應
+        jsonObj := jsongo.Parse(response)
         
-        ; 初始化提取的文本
-        extractedText := ""
-        
+        ; 根據不同提供商提取文本
         if (provider = "Claude") {
-            ; Claude 回應格式處理
-            ; 尋找 "text": 欄位
-            if InStr(response, '"text":') {
-                ; 分段處理 JSON 字串
-                startPos := InStr(response, '"text":') + 7  ; 7 = 長度 '"text":'
-                
-                ; 找到第一個引號的位置
-                quotePos := InStr(response, '"', , startPos) + 1
-                
-                ; 找到封閉引號位置（需考慮轉義引號）
-                closePos := quotePos
-                escapeCount := 0
-                
-                loop {
-                    ; 找下一個引號位置
-                    nextQuote := InStr(response, '"', , closePos)
-                    if (nextQuote = 0) {
-                        break  ; 找不到更多引號，跳出循環
+            if (jsonObj.Has("content")) {
+                for i, item in jsonObj["content"] {
+                    if (item.Has("text")) {
+                        return item["text"]
                     }
-                    
-                    ; 檢查引號前是否有奇數個反斜線（如果是，則為轉義引號）
-                    backslashCount := 0
-                    checkPos := nextQuote - 1
-                    while (checkPos > 0 && SubStr(response, checkPos, 1) = "\") {
-                        backslashCount += 1
-                        checkPos -= 1
-                    }
-                    
-                    if (Mod(backslashCount, 2) = 0) {
-                        ; 偶數個反斜線表示這是真正的結束引號
-                        closePos := nextQuote
-                        break
-                    } else {
-                        ; 奇數個反斜線表示這是轉義引號，繼續尋找
-                        closePos := nextQuote + 1
-                    }
-                }
-                
-                if (closePos > quotePos) {
-                    extractedText := SubStr(response, quotePos, closePos - quotePos)
-                    
-                    ; 處理 JSON 轉義序列
-                    extractedText := ProcessJsonEscapes(extractedText, provider)
                 }
             }
         } else if (provider = "OpenAI" || provider = "Akash") {
-            ; OpenAI/Akash 回應格式處理
-            ; 尋找 "content": 欄位
-            if InStr(response, '"content":') {
-                ; 分段處理 JSON 字串
-                startPos := InStr(response, '"content":') + 10  ; 10 = 長度 '"content":'
-                
-                ; 找到第一個引號的位置
-                quotePos := InStr(response, '"', , startPos) + 1
-                
-                ; 找到封閉引號位置（需考慮轉義引號）
-                closePos := quotePos
-                escapeCount := 0
-                
-                loop {
-                    ; 找下一個引號位置
-                    nextQuote := InStr(response, '"', , closePos)
-                    if (nextQuote = 0) {
-                        break  ; 找不到更多引號，跳出循環
-                    }
-                    
-                    ; 檢查引號前是否有奇數個反斜線（如果是，則為轉義引號）
-                    backslashCount := 0
-                    checkPos := nextQuote - 1
-                    while (checkPos > 0 && SubStr(response, checkPos, 1) = "\") {
-                        backslashCount += 1
-                        checkPos -= 1
-                    }
-                    
-                    if (Mod(backslashCount, 2) = 0) {
-                        ; 偶數個反斜線表示這是真正的結束引號
-                        closePos := nextQuote
-                        break
-                    } else {
-                        ; 奇數個反斜線表示這是轉義引號，繼續尋找
-                        closePos := nextQuote + 1
+            if (jsonObj.Has("choices")) {
+                for i, choice in jsonObj["choices"] {
+                    if (choice.Has("message") && choice["message"].Has("content")) {
+                        return choice["message"]["content"]
                     }
                 }
-                
-                if (closePos > quotePos) {
-                    extractedText := SubStr(response, quotePos, closePos - quotePos)
-                    
-                    ; 處理 JSON 轉義序列
-                    extractedText := ProcessJsonEscapes(extractedText, provider)
+            }
+        } else if (provider = "Gemini") {
+            if (jsonObj.Has("candidates") && jsonObj["candidates"].Length > 0) {
+                if (jsonObj["candidates"][1].Has("content") && 
+                    jsonObj["candidates"][1]["content"].Has("parts") && 
+                    jsonObj["candidates"][1]["content"]["parts"].Length > 0) {
+                    return jsonObj["candidates"][1]["content"]["parts"][1]["text"]
                 }
             }
         }
         
-        ; 如果提取失敗，嘗試寫入錯誤日誌並返回提示
-        if (extractedText = "") {
-            ; 寫入錯誤日誌文件
-            errorLogFile := A_ScriptDir "\response_error.log"
-            FileAppend "無法解析回應：`n" response "`n", errorLogFile, "UTF-8"
-            
-            return "無法識別回應格式。錯誤已記錄到 response_error.log 文件。"
-        }
-        
-        ; 刪除臨時文件
-        FileDelete(responseFile)
-        
-        return extractedText
+        ; 如果提取失敗，記錄錯誤
+        FileAppend("無法解析回應：`n" . response . "`n", A_ScriptDir . "\response_error.log", "UTF-8")
+        return "無法識別回應格式。錯誤已記錄到 response_error.log 文件。"
     } catch Error as e {
         ; 發生異常時，記錄詳細錯誤信息
-        errorMsg := "提取文字時發生錯誤: " e.Message "`n在第 " e.Line " 行`n"
-        FileAppend errorMsg "原始回應：`n" response, A_ScriptDir "\extract_error.log", "UTF-8"
+        errorMsg := "提取文字時發生錯誤: " . e.Message . "`n在第 " . e.Line . " 行`n"
+        FileAppend(errorMsg . "原始回應：`n" . response, A_ScriptDir . "\extract_error.log", "UTF-8")
         
         return "提取文字內容時發生錯誤。詳細信息已記錄到 extract_error.log 文件。"
     }
-}
-
-; 處理 JSON 轉義序列的輔助函數，根據不同提供商調整處理方式
-ProcessJsonEscapes(text, provider) {
-    ; 處理常見的 JSON 轉義序列
-    processedText := text
-    
-    ; 處理換行符
-    processedText := StrReplace(processedText, "\n", "`n")
-    processedText := StrReplace(processedText, "\r", "`r")
-    
-    ; 處理引號和其他特殊字符
-    processedText := StrReplace(processedText, '\"', '"')
-    processedText := StrReplace(processedText, "\t", "`t")
-    processedText := StrReplace(processedText, "\b", "`b")
-    processedText := StrReplace(processedText, "\f", "`f")
-    
-    ; 特別處理 Akash API 的多餘反斜線問題
-    if (provider = "Akash") {
-        ; 清除段落結尾的單獨反斜線
-        processedText := RegExReplace(processedText, "\\(\r\n|\r|\n)", "$1")
-        processedText := RegExReplace(processedText, "\\$", "")  ; 處理文本結尾的反斜線
-        
-        ; 修正段落間可能出現的連續反斜線 + 換行
-        processedText := RegExReplace(processedText, "\\\\(\r\n|\r|\n)", "$1")
-        
-        ; 針對 Akash 的多餘反斜線，使用多次簡單替換而非複雜正則
-        ; 先處理段落結尾反斜線
-        processedText := StrReplace(processedText, "\", "")
-    } else {
-        ; 非 Akash 提供商的標準處理
-        processedText := StrReplace(processedText, "\\", "\")
-    }
-    
-    ; 處理 Unicode 轉義序列 \uXXXX
-    pos := 1
-    while (pos := InStr(processedText, "\u", false, pos)) {
-        ; 確保有足夠的字符
-        if (pos + 5 <= StrLen(processedText)) {
-            ; 提取 4 位十六進制
-            hexCode := SubStr(processedText, pos + 2, 4)
-            
-            ; 嘗試轉換為字符
-            try {
-                ; 將十六進制轉換為十進制
-                charCode := Integer("0x" hexCode)
-                
-                ; 轉換為 UTF-16 字符
-                char := Chr(charCode)
-                
-                ; 替換轉義序列
-                processedText := StrReplace(processedText, "\u" hexCode, char, , 1)
-            } catch {
-                ; 如果轉換失敗，跳過此轉義序列
-                pos += 6
-            }
-        } else {
-            ; 不夠長，退出循環
-            break
-        }
-    }
-    
-    return processedText
 }
 
 ShowResponse(response, provider, title := "", mouseX := 0, mouseY := 0) {
@@ -610,34 +481,41 @@ ShowResponse(response, provider, title := "", mouseX := 0, mouseY := 0) {
     
     ; 創建 GUI，添加最小尺寸限制
     responseGui := Gui("+Resize MinSize400x300", guiTitle)  ; 添加 MinSize 限制
-    responseGui.BackColor := "0x81D8D0"  ; Tiffany Blue 背景色
+    responseGui.BackColor := "0xe4D299"  ; Tiffany Blue 背景色
+    ; responseGui.BackColor := "0x81D8D0"  ; Tiffany Blue 背景色
     responseGui.SetFont("s15", "微軟正黑體")
     
     ; 提取文字
     extractedText := ExtractResponseText(response, provider)
 
     ; 設置標籤文字顏色
-    responseGui.SetFont("s15 c000000")  ; 黑色文字
+    ; responseGui.SetFont("s15 c000000")  ; 黑色文字
+    responseGui.SetFont("s15 cb28656")  ; 黑色文字
     
     ; 添加原始文字標籤和編輯框
-    originalLabel := responseGui.AddText("xm w200", "原始文字:")
+    resultLabel := responseGui.AddText("xm w200", "處理結果:")
 
     ; 設置編輯框的字體和顏色
-    responseGui.SetFont("s15 cFFFFFF")  ; 白色文字
-    originalBox := responseGui.AddEdit("xm y+20 w600 h150 ReadOnly")
-    originalBox.Value := SelectedText
-    originalBox.Opt("+Background1A1A1A")  ; 深色背景
+    responseGui.SetFont("s15 cb28656")  ; 白色文字
+    ; responseGui.SetFont("s15 cFFFFFF")  ; 白色文字
+    translatedBox := responseGui.AddEdit("xm y+20 w600 h200 ReadOnly")
+    translatedBox.Value := extractedText
+    translatedBox.Opt("+Backgrounde1ddc3")  ; 深色背景
+    ; translatedBox.Opt("+Background1A1A1A")  ; 深色背景
+
 
     ; 重新設置標籤文字顏色
-    responseGui.SetFont("s15 c000000")  ; 黑色文字
+    ; responseGui.SetFont("s15 c000000")  ; 黑色文字
+    responseGui.SetFont("s15 cb28656")  ; 黑色文字
 
     ; 添加處理結果標籤和編輯框
-    resultLabel := responseGui.AddText("xm y+10 w200", "處理結果:")
+    originalLabel := responseGui.AddText("xm y+10 w200", "原始文字:")
     ; 設置編輯框的字體和顏色
-    responseGui.SetFont("s15 cFFFFFF")  ; 白色文字
-    translatedBox := responseGui.AddEdit("xm y+15 w600 h200 ReadOnly")
-    translatedBox.Value := extractedText
-    translatedBox.Opt("+Background1A1A1A")  ; 深色背景
+    ; responseGui.SetFont("s15 cFFFFFF")  ; 白色文字
+    responseGui.SetFont("s15 cb28656")  ; 白色文字
+    originalBox := responseGui.AddEdit("xm y+15 w600 h150 ReadOnly")
+    originalBox.Value := SelectedText
+    originalBox.Opt("+Backgrounde1ddc3")  ; 深色背景
 
     ; 重設回默認字體用於按鈕
     responseGui.SetFont("s15")
@@ -688,13 +566,13 @@ GuiResize(thisGui, MinMax, Width, Height) {
     controlWidth := Width - 20
     
     ; 調整原始文字區域
-    thisGui.originalLabel.Move(10, 10)
-    thisGui.originalBox.Move(10, 40, controlWidth, originalHeight)
+    thisGui.resultLabel.Move(10, 10)
+    thisGui.translatedBox.Move(10, 40, controlWidth, translatedHeight)
     
     ; 調整處理結果區域
-    labelY := originalHeight + 50
-    thisGui.resultLabel.Move(10, labelY)
-    thisGui.translatedBox.Move(10, labelY + 30, controlWidth, translatedHeight)
+    labelY := translatedHeight + 50
+    thisGui.originalLabel.Move(10, labelY)
+    thisGui.originalBox.Move(10, labelY + 30, controlWidth, originalHeight)
     
     ; 調整按鈕位置
     buttonY := Height - 40
@@ -763,7 +641,8 @@ ReadApiModel(provider) {
     defaultModels := Map(
         "Claude", "claude-3-haiku-20240307",
         "OpenAI", "gpt-4o",
-        "Akash", "Meta-Llama-3-1-8B-Instruct-FP8"
+        "Akash", "Meta-Llama-3-1-8B-Instruct-FP8",
+        "Gemini", "gemini-1.5-pro"
     )
     
     model := ReadApiSetting(provider, "Model", defaultModels.Has(provider) ? defaultModels[provider] : "")
@@ -775,10 +654,18 @@ ReadApiEndpoint(provider) {
     defaultEndpoints := Map(
         "Claude", "https://api.anthropic.com/v1/messages",
         "OpenAI", "https://api.openai.com/v1/chat/completions",
-        "Akash", "https://chatapi.akash.network/api/v1/chat/completions"
+        "Akash", "https://chatapi.akash.network/api/v1/chat/completions",
+        "Gemini", "https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent?key={API_KEY}"
     )
     
     endpoint := ReadApiSetting(provider, "Endpoint", defaultEndpoints.Has(provider) ? defaultEndpoints[provider] : "")
+    
+    ; 如果是 Gemini，需要替換 {MODEL} 為實際模型名稱
+    if (provider = "Gemini") {
+        model := ReadApiModel(provider)
+        endpoint := StrReplace(endpoint, "{MODEL}", model)
+    }
+    
     return endpoint
 }
 
@@ -794,6 +681,7 @@ ReadApiVersion(provider) {
     return version
 }
 
+; 創建樣板 ini 檔
 ; 創建樣板 ini 檔
 CreateTemplateIniFile(filePath) {
     content := "[Claude]`n"
@@ -813,6 +701,12 @@ CreateTemplateIniFile(filePath) {
         . "Model=Meta-Llama-3-1-8B-Instruct-FP8`n"
         . "Endpoint=https://chatapi.akash.network/api/v1/chat/completions`n"
         . "Version=`n"
+        . "`n"
+        . "[Gemini]`n"
+        . "ApiKey=你的Gemini金鑰`n"
+        . "Model=gemini-1.5-pro`n"
+        . "Endpoint=https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent?key={API_KEY}`n"
+        . "Version=`n"
     
     file := FileOpen(filePath, "w", "UTF-8")
     if file {
@@ -823,3 +717,33 @@ CreateTemplateIniFile(filePath) {
     return false
 }
 
+LookUp()
+{
+    Sleep 300
+    a := A_Clipboard
+    A_Clipboard := ""
+    Send "^c"
+    Sleep 300
+    b := A_Clipboard
+    if (StrLen(b) > 0 and StrLen(b) < 20)
+    {
+        
+        MouseGetPos(&mouseX, &mouseY)
+        Run '"C:\Green software\GoldenDict\GoldenDict.exe" "' b '"'
+        Sleep 800
+        WinWait "ahk_class Qt5QWindowIcon ahk_exe GoldenDict.exe",, 5
+        WinMove mouseX+150, mouseY, 822, 672, "ahk_class Qt5QWindowIcon ahk_exe GoldenDict.exe"
+        WinActivate "ahk_class Qt5QWindowIcon ahk_exe GoldenDict.exe"
+        
+    }
+    A_Clipboard := ""
+    if (StrLen(b) = 0)
+    {
+        A_Clipboard := a   ; 還原剪貼簿內容
+        MsgBox("沒有選取文字！", "提示", "48")
+        return
+    }
+    a := ""
+    b := ""
+    return
+}
