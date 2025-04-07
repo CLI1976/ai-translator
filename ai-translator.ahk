@@ -153,6 +153,7 @@ translateMenu.Add("英文拼字檢查", SpellCheckEnglish)
 ; ========== 快捷鍵設定 ==========
 ; 使用 CapsLock + S
 *CapsLock Up::release_modifiers()
+*CapsLock::double_tap_caps.Call()
 
 #HotIf GetKeyState('CapsLock', 'P')
 *a::ShowTranslateMenu()
@@ -165,7 +166,7 @@ class double_tap_caps {
     static __New() => SetCapsLockState('AlwaysOff')
 
     static Call() {
-        if (A_TickCount - this.last < 250)
+        if (A_TickCount - this.last < 300)
             this.toggle_caps()
             ,this.last := 0
         else this.last := A_TickCount
