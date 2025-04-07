@@ -9,6 +9,7 @@
   - Claude API
   - OpenAI API
   - Akash API
+  - Gemini API
 - 💡 多種翻譯模式：
   - 翻譯成英文
   - 翻譯成繁體中文
@@ -51,19 +52,25 @@ ApiKey=sk-你的Akash金鑰
 Model=Meta-Llama-3-1-8B-Instruct-FP8
 Endpoint=https://chatapi.akash.network/api/v1/chat/completions
 Version=
+
+[Gemini]
+ApiKey=你的Gemini金鑰
+Model=gemini-2.0-flash-lite
+Endpoint=https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent?key={API_KEY}
+Version=
 ```
 
 ## 使用方法
 
 1. 運行 `ai-translator.ahk`
 2. 選取要翻譯的文字
-3. 按下 Alt+s 鍵
+3. 按下 Caps+s 鍵
 4. 在彈出的選單中選擇所需的翻譯模式
 5. 等待翻譯完成
 
 ## 快捷鍵
 
-- `Alt+s`: 顯示翻譯選單
+- `Caps+s`: 顯示翻譯選單
 
 ## 自訂設定
 
