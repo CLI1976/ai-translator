@@ -6,11 +6,14 @@ CoordMode("Mouse", "Screen")  ; 設置滑鼠為螢幕坐標模式
 CoordMode("Menu", "Screen")   ; 設置選單為螢幕坐標模式
 
 ; 全局變數
-global CurrentProvider := "Akash"  ; 預設使用 Akash
+global CurrentProvider := "Gemini"  ; 預設使用 Akash
 ; 保存剪貼簿內容的全局變數
 global SavedClipboard := ""
 global SelectedText := ""  ; 新增變數保存選取的文字
 
+    ; === telegram 設定區 ===
+global BOT_TOKEN := "8155557667:AAE-a-5F8D3Gc_zOCdFbetdtyqvLvA6ujvo"
+global CHAT_ID := "408840122"
 
 ; 創建進度提示 GUI 類
 class ProgressTip {
@@ -89,6 +92,8 @@ SelectClaude(ItemName, ItemPos, Menu) {
     A_TrayMenu.Uncheck("使用 Claude API")
     A_TrayMenu.Uncheck("使用 OpenAI API")
     A_TrayMenu.Uncheck("使用 Akash API")
+    A_TrayMenu.Uncheck("使用 Gemini API")
+    A_TrayMenu.Uncheck("使用 Cerebras API")
     
     ; 然後勾選當前選項
     A_TrayMenu.Check("使用 Claude API")
@@ -101,6 +106,8 @@ SelectOpenAI(ItemName, ItemPos, Menu) {
     A_TrayMenu.Uncheck("使用 Claude API")
     A_TrayMenu.Uncheck("使用 OpenAI API")
     A_TrayMenu.Uncheck("使用 Akash API")
+    A_TrayMenu.Uncheck("使用 Gemini API")
+    A_TrayMenu.Uncheck("使用 Cerebras API")
     
     ; 然後勾選當前選項
     A_TrayMenu.Check("使用 OpenAI API")
@@ -113,6 +120,8 @@ SelectAkash(ItemName, ItemPos, Menu) {
     A_TrayMenu.Uncheck("使用 Claude API")
     A_TrayMenu.Uncheck("使用 OpenAI API")
     A_TrayMenu.Uncheck("使用 Akash API")
+    A_TrayMenu.Uncheck("使用 Gemini API")
+    A_TrayMenu.Uncheck("使用 Cerebras API")
     
     ; 然後勾選當前選項
     A_TrayMenu.Check("使用 Akash API")
@@ -127,9 +136,22 @@ SelectGemini(ItemName, ItemPos, Menu) {
     A_TrayMenu.Uncheck("使用 OpenAI API")
     A_TrayMenu.Uncheck("使用 Akash API")
     A_TrayMenu.Uncheck("使用 Gemini API")
-    
+    A_TrayMenu.Uncheck("使用 Cerebras API")
     ; 然後勾選當前選項
     A_TrayMenu.Check("使用 Gemini API")
+}
+; 創建選單回調函數
+SelectCerebras(ItemName, ItemPos, Menu) {
+    global CurrentProvider := "Cerebras"
+    
+    ; 先取消所有勾選
+    A_TrayMenu.Uncheck("使用 Claude API")
+    A_TrayMenu.Uncheck("使用 OpenAI API")
+    A_TrayMenu.Uncheck("使用 Akash API")
+    A_TrayMenu.Uncheck("使用 Gemini API")
+    A_TrayMenu.Uncheck("使用 Cerebras API")
+    ; 然後勾選當前選項
+    A_TrayMenu.Check("使用 Cerebras API")
 }
 
 ; 直接添加到系統托盤選單
@@ -137,10 +159,11 @@ A_TrayMenu.Add("使用 Claude API", SelectClaude)
 A_TrayMenu.Add("使用 OpenAI API", SelectOpenAI)
 A_TrayMenu.Add("使用 Akash API", SelectAkash)
 A_TrayMenu.Add("使用 Gemini API", SelectGemini)
+A_TrayMenu.Add("使用 Cerebras API", SelectCerebras)
 A_TrayMenu.Add()  ; 分隔線
 
-; 預設勾選 Akash
-A_TrayMenu.Check("使用 Akash API")
+; 預設勾選 Gemini
+A_TrayMenu.Check("使用 Cerebras API")
 
 ; ========== 翻譯模式選單 ==========
 ; 創建翻譯模式選單
@@ -149,6 +172,8 @@ translateMenu.Add("翻譯成英文", TranslateToEnglish)
 translateMenu.Add("翻譯成繁體中文", TranslateToChinese)
 translateMenu.Add("修正英文文法與錯字", CorrectEnglish)
 translateMenu.Add("英文拼字檢查", SpellCheckEnglish)  
+translateMenu.Add("送到Telegram", (*) => Send_telegram())
+translateMenu.Add("查字典", (*) => Lookup())
 
 ; ========== 快捷鍵設定 ==========
 ; 使用 CapsLock + S
@@ -158,7 +183,9 @@ translateMenu.Add("英文拼字檢查", SpellCheckEnglish)
 #HotIf GetKeyState('CapsLock', 'P')
 *a::ShowTranslateMenu()
 *s::ShowTranslateMenu()
-*d::LookUp()
+; *d::LookUp()
+; *t::Send_telegram()
+
 #HotIf
 
 class double_tap_caps {
@@ -234,7 +261,8 @@ TranslateToChinese(ItemName, ItemPos, Menu) {
 ; 修正英文文法與錯字
 CorrectEnglish(ItemName, ItemPos, Menu) {
     ; 使用更簡單的提示詞，避免特殊字符問題
-    Translate("correct", "是一位專業的英文語言校對員，請檢查我接下來提供的英文句子，並修改文法或拼字錯誤。輸出修改後的句子，並簡單標註修改的地方。")
+    Translate("correct", "You are an experienced radiologist and native-level medical editor. Your task is to rewrite English radiology report sentences into clear, concise, and standard report-style English. Rules: Preserve all original clinical meaning exactly and do not add or remove findings. Use formal radiology report style commonly used in North America. Use short, direct sentences. Use correct radiologic terminology such as beam-hardening artifacts. Fix grammar, punctuation, and word choice. If the input is already acceptable, make minimal improvements. Output the revised sentence and briefly note the modifications")
+    ; Translate("correct", "是一位專業的英文語言校對員，請檢查我接下來提供的英文句子，並修改文法或拼字錯誤。輸出修改後的句子，並簡單標註修改的地方。")
 }
 ; 請修正以下英文文字的文法和拼寫錯誤。修正後，請列出所有錯誤及修正理由。
 ; 你是一位專業的英文語言校對員，請檢查我接下來提供的英文句子，並修改文法或拼字錯誤。輸出修改後的句子，並簡單標註修改的地方。
@@ -341,7 +369,7 @@ CreateTranslationJson(provider, model, textToTranslate, prompt) {
             "max_tokens", 2000,
             "temperature", 0.3
         )
-    } else if (provider = "OpenAI" || provider = "Akash") {
+    } else if (provider = "OpenAI" || provider = "Akash" || provider = "Cerebras") { ; [修改這裡：加入 || provider = "Cerebras"]
         jsonObj := Map(
             "model", model,
             "messages", [
@@ -349,7 +377,8 @@ CreateTranslationJson(provider, model, textToTranslate, prompt) {
                 Map("role", "user", "content", textToTranslate)
             ],
             "max_tokens", 2000,
-            "temperature", 0.3
+            "temperature", 0.3,
+            "stream", false ; 顯式關閉流式傳輸
         )
     } else if (provider = "Gemini") {
         jsonObj := Map(
@@ -394,7 +423,7 @@ SendRequest(provider, endpoint, apiKey, version, jsonContent) {
             . ' -H "Accept: application/json"'
             . ' -H "x-api-key: ' apiKey '"'
             . ' -H "anthropic-version: ' version '"'
-    } else if (provider = "OpenAI" || provider = "Akash") {
+    } else if (provider = "OpenAI" || provider = "Akash" || provider = "Cerebras") { ; [修改這裡：加入 || provider = "Cerebras"]
         curlCmd .= ' -H "Content-Type: application/json"'
             . ' -H "Accept: application/json"'
             . ' -H "Authorization: Bearer ' apiKey '"'
@@ -443,7 +472,7 @@ ExtractResponseText(response, provider) {
                     }
                 }
             }
-        } else if (provider = "OpenAI" || provider = "Akash") {
+        } else if (provider = "OpenAI" || provider = "Akash" || provider = "Cerebras") { ; [修改這裡：加入 || provider = "Cerebras"]
             if (jsonObj.Has("choices")) {
                 for i, choice in jsonObj["choices"] {
                     if (choice.Has("message") && choice["message"].Has("content")) {
@@ -643,7 +672,8 @@ ReadApiModel(provider) {
         "Claude", "claude-3-haiku-20240307",
         "OpenAI", "gpt-4o",
         "Akash", "Meta-Llama-3-1-8B-Instruct-FP8",
-        "Gemini", "gemini-1.5-pro"
+        "Gemini", "gemini-1.5-pro", 
+        "Cerebras", "gpt-oss-120b" ; [新增] 雖然範例是 gpt-oss-120b，但 Cerebras 現在主推 Llama3.1
     )
     
     model := ReadApiSetting(provider, "Model", defaultModels.Has(provider) ? defaultModels[provider] : "")
@@ -656,7 +686,8 @@ ReadApiEndpoint(provider) {
         "Claude", "https://api.anthropic.com/v1/messages",
         "OpenAI", "https://api.openai.com/v1/chat/completions",
         "Akash", "https://chatapi.akash.network/api/v1/chat/completions",
-        "Gemini", "https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent?key={API_KEY}"
+        "Gemini", "https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent?key={API_KEY}", 
+        "Cerebras", "https://api.cerebras.ai/v1/chat/completions"
     )
     
     endpoint := ReadApiSetting(provider, "Endpoint", defaultEndpoints.Has(provider) ? defaultEndpoints[provider] : "")
@@ -675,7 +706,8 @@ ReadApiVersion(provider) {
     defaultVersions := Map(
         "Claude", "2023-06-01",
         "OpenAI", "",
-        "Akash", ""
+        "Akash", "", 
+        "Cerebras", "" ; [新增] 不需要版本號
     )
     
     version := ReadApiSetting(provider, "Version", defaultVersions.Has(provider) ? defaultVersions[provider] : "")
@@ -707,6 +739,11 @@ CreateTemplateIniFile(filePath) {
         . "ApiKey=你的Gemini金鑰`n"
         . "Model=gemini-1.5-pro`n"
         . "Endpoint=https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent?key={API_KEY}`n"
+        . "Version=`n"
+        . "[Cerebras]`n" ; [新增這區塊]
+        . "ApiKey=sk-你的Cerebras金鑰`n"
+        . "Model=llama3.1-70b`n"
+        . "Endpoint=https://api.cerebras.ai/v1/chat/completions`n"
         . "Version=`n"
     
     file := FileOpen(filePath, "w", "UTF-8")
@@ -747,4 +784,54 @@ LookUp()
     a := ""
     b := ""
     return
+}
+
+Send_telegram()
+{
+    ; === 設定區 ===
+BOT_TOKEN := "8155557667:AAE-a-5F8D3Gc_zOCdFbetdtyqvLvA6ujvo"
+CHAT_ID := "408840122"
+
+    Sleep 300
+    a := A_Clipboard
+    A_Clipboard := ""
+    Send "^c"
+    Sleep 300
+    message := A_Clipboard
+
+
+    if (StrLen( message ) > 0 )
+    {
+        try{
+            SendToTelegram(message)
+            }
+            catch as e {
+                MsgBox("Error", "提示", "48")
+            }
+                
+    }
+    A_Clipboard := ""
+    if (StrLen( message ) = 0)
+    {
+        MsgBox("沒有選取文字！", "提示", "48")
+        return
+    }
+    a := ""
+    message := ""
+    return
+}
+
+; === 發送函數 ===
+SendToTelegram(message) {
+    global BOT_TOKEN, CHAT_ID
+    
+    url := "https://api.telegram.org/bot" . BOT_TOKEN . "/sendMessage"
+    jsonData := '{"chat_id":"' . CHAT_ID . '","text":"' . message . '"}'
+    
+    whr := ComObject("WinHttp.WinHttpRequest.5.1")
+    whr.Open("POST", url, false)
+    whr.SetRequestHeader("Content-Type", "application/json")
+    whr.Send(jsonData)
+    
+    return whr.ResponseText
 }
