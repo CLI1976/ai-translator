@@ -10,6 +10,7 @@
   - OpenAI API
   - Akash API
   - Gemini API
+  - Cerebras API
 - 💡 多種翻譯模式：
   - 翻譯成英文
   - 翻譯成繁體中文
@@ -75,7 +76,7 @@ Version=
 ## 自訂設定
 
 - 可在系統托盤圖標選單中切換不同的 AI 服務商
-- 預設使用 Akash API 作為翻譯服務
+- 預設使用 Cerebras API 作為翻譯服務
 - 可通過修改 `api.ini` 更新 API 設定
 
 ## 注意事項
