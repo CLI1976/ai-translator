@@ -172,7 +172,6 @@ translateMenu.Add("翻譯成英文", TranslateToEnglish)
 translateMenu.Add("翻譯成繁體中文", TranslateToChinese)
 translateMenu.Add("修正英文文法與錯字", CorrectEnglish)
 translateMenu.Add("英文拼字檢查", SpellCheckEnglish)  
-translateMenu.Add("送到Telegram", (*) => Send_telegram())
 translateMenu.Add("查字典", (*) => Lookup())
 
 ; ========== 快捷鍵設定 ==========
@@ -767,7 +766,7 @@ LookUp()
     {
         
         MouseGetPos(&mouseX, &mouseY)
-        Run '"C:\Green software\GoldenDict\GoldenDict.exe" "' b '"'
+        Run '"C:\greensoftware\GoldenDict\GoldenDict.exe" "' b '"'
         Sleep 800
         WinWait "ahk_class Qt5QWindowIcon ahk_exe GoldenDict.exe",, 5
         WinMove mouseX+150, mouseY, 822, 672, "ahk_class Qt5QWindowIcon ahk_exe GoldenDict.exe"
@@ -784,54 +783,4 @@ LookUp()
     a := ""
     b := ""
     return
-}
-
-Send_telegram()
-{
-    ; === 設定區 ===
-BOT_TOKEN := "8155557667:AAE-a-5F8D3Gc_zOCdFbetdtyqvLvA6ujvo"
-CHAT_ID := "408840122"
-
-    Sleep 300
-    a := A_Clipboard
-    A_Clipboard := ""
-    Send "^c"
-    Sleep 300
-    message := A_Clipboard
-
-
-    if (StrLen( message ) > 0 )
-    {
-        try{
-            SendToTelegram(message)
-            }
-            catch as e {
-                MsgBox("Error", "提示", "48")
-            }
-                
-    }
-    A_Clipboard := ""
-    if (StrLen( message ) = 0)
-    {
-        MsgBox("沒有選取文字！", "提示", "48")
-        return
-    }
-    a := ""
-    message := ""
-    return
-}
-
-; === 發送函數 ===
-SendToTelegram(message) {
-    global BOT_TOKEN, CHAT_ID
-    
-    url := "https://api.telegram.org/bot" . BOT_TOKEN . "/sendMessage"
-    jsonData := '{"chat_id":"' . CHAT_ID . '","text":"' . message . '"}'
-    
-    whr := ComObject("WinHttp.WinHttpRequest.5.1")
-    whr.Open("POST", url, false)
-    whr.SetRequestHeader("Content-Type", "application/json")
-    whr.Send(jsonData)
-    
-    return whr.ResponseText
 }
