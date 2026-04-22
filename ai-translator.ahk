@@ -6,14 +6,14 @@ CoordMode("Mouse", "Screen")  ; 設置滑鼠為螢幕坐標模式
 CoordMode("Menu", "Screen")   ; 設置選單為螢幕坐標模式
 
 ; 全局變數
-global CurrentProvider := "Gemini"  ; 預設使用 Akash
+global CurrentProvider := "Cerebras"  ; 預設使用 
 ; 保存剪貼簿內容的全局變數
 global SavedClipboard := ""
 global SelectedText := ""  ; 新增變數保存選取的文字
 
     ; === telegram 設定區 ===
-global BOT_TOKEN := "8155557667:AAE-a-5F8D3Gc_zOCdFbetdtyqvLvA6ujvo"
-global CHAT_ID := "408840122"
+global BOT_TOKEN := ""
+global CHAT_ID := ""
 
 ; 創建進度提示 GUI 類
 class ProgressTip {
@@ -91,7 +91,7 @@ SelectClaude(ItemName, ItemPos, Menu) {
     ; 先取消所有勾選
     A_TrayMenu.Uncheck("使用 Claude API")
     A_TrayMenu.Uncheck("使用 OpenAI API")
-    A_TrayMenu.Uncheck("使用 Akash API")
+    A_TrayMenu.Uncheck("使用 Nvidia API")
     A_TrayMenu.Uncheck("使用 Gemini API")
     A_TrayMenu.Uncheck("使用 Cerebras API")
     
@@ -105,7 +105,7 @@ SelectOpenAI(ItemName, ItemPos, Menu) {
     ; 先取消所有勾選
     A_TrayMenu.Uncheck("使用 Claude API")
     A_TrayMenu.Uncheck("使用 OpenAI API")
-    A_TrayMenu.Uncheck("使用 Akash API")
+    A_TrayMenu.Uncheck("使用 Nvidia API")
     A_TrayMenu.Uncheck("使用 Gemini API")
     A_TrayMenu.Uncheck("使用 Cerebras API")
     
@@ -113,18 +113,18 @@ SelectOpenAI(ItemName, ItemPos, Menu) {
     A_TrayMenu.Check("使用 OpenAI API")
 }
 
-SelectAkash(ItemName, ItemPos, Menu) {
-    global CurrentProvider := "Akash"
+SelectNvidia(ItemName, ItemPos, Menu) {
+    global CurrentProvider := "Nvidia"
     
     ; 先取消所有勾選
     A_TrayMenu.Uncheck("使用 Claude API")
     A_TrayMenu.Uncheck("使用 OpenAI API")
-    A_TrayMenu.Uncheck("使用 Akash API")
+    A_TrayMenu.Uncheck("使用 Nvidia API")
     A_TrayMenu.Uncheck("使用 Gemini API")
     A_TrayMenu.Uncheck("使用 Cerebras API")
     
     ; 然後勾選當前選項
-    A_TrayMenu.Check("使用 Akash API")
+    A_TrayMenu.Check("使用 Nvidia API")
 }
 
 ; 創建選單回調函數
@@ -134,7 +134,7 @@ SelectGemini(ItemName, ItemPos, Menu) {
     ; 先取消所有勾選
     A_TrayMenu.Uncheck("使用 Claude API")
     A_TrayMenu.Uncheck("使用 OpenAI API")
-    A_TrayMenu.Uncheck("使用 Akash API")
+    A_TrayMenu.Uncheck("使用 Nvidia API")
     A_TrayMenu.Uncheck("使用 Gemini API")
     A_TrayMenu.Uncheck("使用 Cerebras API")
     ; 然後勾選當前選項
@@ -147,7 +147,7 @@ SelectCerebras(ItemName, ItemPos, Menu) {
     ; 先取消所有勾選
     A_TrayMenu.Uncheck("使用 Claude API")
     A_TrayMenu.Uncheck("使用 OpenAI API")
-    A_TrayMenu.Uncheck("使用 Akash API")
+    A_TrayMenu.Uncheck("使用 Nvidia API")
     A_TrayMenu.Uncheck("使用 Gemini API")
     A_TrayMenu.Uncheck("使用 Cerebras API")
     ; 然後勾選當前選項
@@ -157,7 +157,7 @@ SelectCerebras(ItemName, ItemPos, Menu) {
 ; 直接添加到系統托盤選單
 A_TrayMenu.Add("使用 Claude API", SelectClaude)
 A_TrayMenu.Add("使用 OpenAI API", SelectOpenAI)
-A_TrayMenu.Add("使用 Akash API", SelectAkash)
+A_TrayMenu.Add("使用 Nvidia API", SelectNvidia)
 A_TrayMenu.Add("使用 Gemini API", SelectGemini)
 A_TrayMenu.Add("使用 Cerebras API", SelectCerebras)
 A_TrayMenu.Add()  ; 分隔線
@@ -171,8 +171,10 @@ translateMenu := Menu()
 translateMenu.Add("翻譯成英文", TranslateToEnglish)
 translateMenu.Add("翻譯成繁體中文", TranslateToChinese)
 translateMenu.Add("修正英文文法與錯字", CorrectEnglish)
-translateMenu.Add("英文拼字檢查", SpellCheckEnglish)  
+translateMenu.Add("英文拼字檢查", SpellCheckEnglish) 
 translateMenu.Add("查字典", (*) => Lookup())
+translateMenu.Add()  ; 分隔線
+translateMenu.Add("唸出來", (*) => ReadAloud())
 
 ; ========== 快捷鍵設定 ==========
 ; 使用 CapsLock + S
@@ -368,7 +370,7 @@ CreateTranslationJson(provider, model, textToTranslate, prompt) {
             "max_tokens", 2000,
             "temperature", 0.3
         )
-    } else if (provider = "OpenAI" || provider = "Akash" || provider = "Cerebras") { ; [修改這裡：加入 || provider = "Cerebras"]
+    } else if (provider = "OpenAI" || provider = "Nvidia" || provider = "Cerebras") { ; [修改這裡：加入 || provider = "Cerebras"]
         jsonObj := Map(
             "model", model,
             "messages", [
@@ -376,8 +378,7 @@ CreateTranslationJson(provider, model, textToTranslate, prompt) {
                 Map("role", "user", "content", textToTranslate)
             ],
             "max_tokens", 2000,
-            "temperature", 0.3,
-            "stream", false ; 顯式關閉流式傳輸
+            "temperature", 0.3
         )
     } else if (provider = "Gemini") {
         jsonObj := Map(
@@ -422,7 +423,7 @@ SendRequest(provider, endpoint, apiKey, version, jsonContent) {
             . ' -H "Accept: application/json"'
             . ' -H "x-api-key: ' apiKey '"'
             . ' -H "anthropic-version: ' version '"'
-    } else if (provider = "OpenAI" || provider = "Akash" || provider = "Cerebras") { ; [修改這裡：加入 || provider = "Cerebras"]
+    } else if (provider = "OpenAI" || provider = "Nvidia" || provider = "Cerebras") { ; [修改這裡：加入 || provider = "Cerebras"]
         curlCmd .= ' -H "Content-Type: application/json"'
             . ' -H "Accept: application/json"'
             . ' -H "Authorization: Bearer ' apiKey '"'
@@ -471,7 +472,7 @@ ExtractResponseText(response, provider) {
                     }
                 }
             }
-        } else if (provider = "OpenAI" || provider = "Akash" || provider = "Cerebras") { ; [修改這裡：加入 || provider = "Cerebras"]
+        } else if (provider = "OpenAI" || provider = "Nvidia" || provider = "Cerebras") { ; [修改這裡：加入 || provider = "Cerebras"]
             if (jsonObj.Has("choices")) {
                 for i, choice in jsonObj["choices"] {
                     if (choice.Has("message") && choice["message"].Has("content")) {
@@ -670,7 +671,7 @@ ReadApiModel(provider) {
     defaultModels := Map(
         "Claude", "claude-3-haiku-20240307",
         "OpenAI", "gpt-4o",
-        "Akash", "Meta-Llama-3-1-8B-Instruct-FP8",
+        "Nvidia", "meta/llama-3.1-70b-instruct",
         "Gemini", "gemini-1.5-pro", 
         "Cerebras", "gpt-oss-120b" ; [新增] 雖然範例是 gpt-oss-120b，但 Cerebras 現在主推 Llama3.1
     )
@@ -684,7 +685,7 @@ ReadApiEndpoint(provider) {
     defaultEndpoints := Map(
         "Claude", "https://api.anthropic.com/v1/messages",
         "OpenAI", "https://api.openai.com/v1/chat/completions",
-        "Akash", "https://chatapi.akash.network/api/v1/chat/completions",
+        "Nvidia", "https://integrate.api.nvidia.com/v1/chat/completions",
         "Gemini", "https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent?key={API_KEY}", 
         "Cerebras", "https://api.cerebras.ai/v1/chat/completions"
     )
@@ -705,7 +706,7 @@ ReadApiVersion(provider) {
     defaultVersions := Map(
         "Claude", "2023-06-01",
         "OpenAI", "",
-        "Akash", "", 
+        "Nvidia", "", 
         "Cerebras", "" ; [新增] 不需要版本號
     )
     
@@ -728,10 +729,10 @@ CreateTemplateIniFile(filePath) {
         . "Endpoint=https://api.openai.com/v1/chat/completions`n"
         . "Version=`n"
         . "`n"
-        . "[Akash]`n"
-        . "ApiKey=sk-你的Akash金鑰`n"
-        . "Model=Meta-Llama-3-1-8B-Instruct-FP8`n"
-        . "Endpoint=https://chatapi.akash.network/api/v1/chat/completions`n"
+        . "[Nvidia]`n"
+        . "ApiKey=nvapi-你的NVIDIA金鑰`n"
+        . "Model=meta/llama-3.1-70b-instruct`n"
+        . "Endpoint=https://integrate.api.nvidia.com/v1/chat/completions`n"
         . "Version=`n"
         . "`n"
         . "[Gemini]`n"
@@ -766,7 +767,7 @@ LookUp()
     {
         
         MouseGetPos(&mouseX, &mouseY)
-        Run '"C:\greensoftware\GoldenDict\GoldenDict.exe" "' b '"'
+        Run '"C:\green software\GoldenDict\GoldenDict.exe" "' b '"'
         Sleep 800
         WinWait "ahk_class Qt5QWindowIcon ahk_exe GoldenDict.exe",, 5
         WinMove mouseX+150, mouseY, 822, 672, "ahk_class Qt5QWindowIcon ahk_exe GoldenDict.exe"
@@ -783,4 +784,94 @@ LookUp()
     a := ""
     b := ""
     return
+}
+
+
+
+; ========== TTS 功能 ==========
+ReadAloud() {
+    global SelectedText
+
+    ; 檢查是否有選取的文字
+    if (SelectedText = "") {
+        MsgBox("沒有選取文字！", "提示", "48")
+        return
+    }
+
+    ; 讀取 TTS 設定
+    ttsPath := ReadTtsSetting("Path", "")
+    ttsVoice := ReadTtsSetting("Voice", "en-US-GuyNeural")
+
+    if (ttsPath = "" || !FileExist(ttsPath)) {
+        MsgBox("請在 tts.ini 中設定有效的 TTS 路徑。`n目前設定: " ttsPath, "TTS 錯誤", "48")
+        return
+    }
+
+    ; 檢查文字長度
+    if (StrLen(SelectedText) > 500) {
+        MsgBox("文字過長（限制 500 字元），請分段輸入。", "TTS 錯誤", "48")
+        return
+    }
+
+    ; 顯示進度提示
+    ProgressTip.Show("正在播放語音...")
+
+    ; 建立命令 - 使用臨時檔案避免特殊字元問題
+    tempFile := A_Temp "\tts_text.txt"
+    Try FileDelete(tempFile)
+    FileAppend(SelectedText, tempFile, "UTF-8")
+
+    ; 取得 tts.py 所在目錄
+    ttsDir := SubStr(ttsPath, 1, InStr(ttsPath, "\", , -1) - 1)
+
+    ; 使用 --file 參數讀取文字檔案
+    cmd := 'python "' ttsPath '" --file "' tempFile '" --voice ' ttsVoice
+
+    RunWait(A_ComSpec " /c " cmd, ttsDir, "Hide")
+
+    ; 隱藏進度提示
+    ProgressTip.Hide()
+
+    ; 清理臨時檔案
+    Try FileDelete(tempFile)
+}
+
+; 讀取 TTS 設定
+ReadTtsSetting(key, defaultValue := "") {
+    iniFile := A_ScriptDir "\tts.ini"
+
+    ; 檢查 ini 檔是否存在
+    if !FileExist(iniFile) {
+        CreateTtsIniFile(iniFile)
+        MsgBox("已創建 tts.ini 設定檔。請填入 TTS 路徑後再試。", "TTS 設定", "48")
+        return defaultValue
+    }
+
+    ; 讀取設定
+    value := IniRead(iniFile, "TTS", key, defaultValue)
+    return value
+}
+
+; 創建 TTS 設定檔
+CreateTtsIniFile(filePath) {
+    content := "[TTS]`n"
+        . "; TTS Python 腳本的完整路徑`n"
+        . "Path=C:\path\to\tts\tts.py`n"
+        . "`n"
+        . "; 語音選項 (預設: en-US-GuyNeural)`n"
+        . "; 可用選項:`n"
+        . ";   en-US-GuyNeural - 男聲，自然`n"
+        . ";   en-US-AriaNeural - 女聲，清晰`n"
+        . ";   en-US-JennyNeural - 女聲，溫和`n"
+        . ";   en-US-ChristopherNeural - 男聲，專業`n"
+        . ";   en-US-EricNeural - 男聲，友善`n"
+        . "Voice=en-US-GuyNeural`n"
+
+    file := FileOpen(filePath, "w", "UTF-8")
+    if file {
+        file.Write(content)
+        file.Close()
+        return true
+    }
+    return false
 }
